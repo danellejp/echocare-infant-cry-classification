@@ -24,11 +24,12 @@ EchoCare is designed to help first-time parents/caregivers and deaf or hard-of-h
 - **Communication**: UDP Broadcasting, HTTP REST API
 
 ## Project Structure
-
+```
 ├── model/             # CNN model training and evaluation
 ├── raspberry-pi/      # Pi backend, API server, sensors
 ├── android-app/       # Native Android application
-└── datasets/          # Dataset information and preprocessing
+└── dataset/           # Dataset information and preprocessing
+```
 
 
 ## Current Status
