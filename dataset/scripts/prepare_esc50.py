@@ -2,8 +2,9 @@
 ESC-50 Dataset Preparation:
 
 - Reserves 10 test samples from each of the 10 selected categories (saves metadata only)
-- Processes remaining 300 samples: segment, resample, normalise
-- Saves to datasets/processed/cry_detection/train/non-cry/
+- Processes 24 training samples per category (1200 segments)
+- Processes 6 validation samples per category (300 segments)
+- Saves to datasets/processed/cry_detection/train/non-cry/ and validate/non-cry/
 
 """
 
@@ -17,6 +18,7 @@ raw_esc50_audio = Path("C:/Users/danel/FYP/ESC-50/audio")
 raw_esc50_meta = Path("C:/Users/danel/FYP/ESC-50/meta/esc50.csv")
 
 output_audio_dir = Path("dataset/processed/cry_detection/train/non-cry") # outputs the actual audios as .wav files
+output_val_dir = Path("dataset/processed/cry_detection/validate/non-cry") # outputs the validation audios as .wav files
 output_metadata_dir = Path("dataset/processed/cry_detection/test/non-cry") # outputs the test metadata CSV file
 
 selected_categories = [
@@ -27,6 +29,8 @@ selected_categories = [
 target_sr = 16000  # 16kHz
 segment_duration = 1.0  # 1 second
 test_samples_per_category = 10
+train_samples_per_category = 24
+val_samples_per_category = 6
 
 def normalise_audio(audio):
     """Normalising audio to [-1, 1] range for consistent volume across all files"""
@@ -63,7 +67,7 @@ def segment_audio(audio, sample_rate, segment_duration=1.0):
     return segments
 
 
-def process_training_file(input_path, output_dir, filename_prefix):
+def process_file(input_path, output_dir, filename_prefix):
     """Load, resample, normalise, segment, and save training file"""
 
     # load and resample to 16kHz
@@ -85,6 +89,7 @@ def process_training_file(input_path, output_dir, filename_prefix):
 
 
 def main():
+    """ splits data into train/validate/test and processes files """
 
     # load metadata
     df = pd.read_csv(raw_esc50_meta)
@@ -94,25 +99,29 @@ def main():
 
     # split into train/test sets
     test_samples = [] # 10 samples per category
-    train_samples = [] # 30 samples per category
+    train_samples = [] # 24 samples per category
+    val_samples = []   # 6 samples per category
 
     # loop through each of the 10 categories
     for category in selected_categories:
         # get all samples for this category (40 samples)
         category_df = df[df['category'] == category]
 
-        # first 10 for testing, rest for training
-        test_cat = category_df.head(test_samples_per_category)
-        train_cat = category_df.iloc[test_samples_per_category:]
+        # split: first 10 test, next 24 train, last 6 validate
+        test_cat = category_df.head(test_samples_per_category)  # 0-9
+        train_cat = category_df.iloc[test_samples_per_category:test_samples_per_category + train_samples_per_category]  # 10-33
+        val_cat = category_df.iloc[test_samples_per_category + train_samples_per_category:]  # 34-39
         
         # add to sets
         test_samples.append(test_cat)
         train_samples.append(train_cat)
+        val_samples.append(val_cat)
         
     # combine all categories back into single DataFrames
     test_df = pd.concat(test_samples, ignore_index=True) # 100 test samples
-    train_df = pd.concat(train_samples, ignore_index=True) # 300 training samples
-    
+    train_df = pd.concat(train_samples, ignore_index=True) # 240 training samples
+    val_df = pd.concat(val_samples, ignore_index=True) # 60 validation samples
+
     # save test metadata only
     test_csv_path = output_metadata_dir / "esc50_test_reserved.csv"
     test_df.to_csv(test_csv_path, index=False)
@@ -131,8 +140,19 @@ def main():
         filename_prefix = f"{row['category']}_{Path(row['filename']).stem}"
 
         # process and save segments
-        num_segments = process_training_file(input_path, output_audio_dir, filename_prefix)
+        num_segments = process_file(input_path, output_audio_dir, filename_prefix)
         total_segments += num_segments
+
+    # process validation files only
+    print(f"Processing {len(val_df)} validation files:")
+    total_val_segments = 0
+    
+    for idx, row in val_df.iterrows():
+        input_path = raw_esc50_audio / row['filename']
+        filename_prefix = f"{row['category']}_{Path(row['filename']).stem}"
+        
+        num_segments = process_file(input_path, output_val_dir, filename_prefix)
+        total_val_segments += num_segments
     
     print("Done")
 
