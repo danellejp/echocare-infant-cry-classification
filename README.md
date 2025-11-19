@@ -18,7 +18,7 @@ EchoCare is designed to help first-time parents/caregivers and deaf or hard-of-h
 
 ## Tech Stack
 - **Hardware**: Raspberry Pi 4, USB Microphone, DHT22 Temperature Sensor, RGB LED Module
-- **ML Framework**: TensorFlow/TensorFlow Lite, CNN
+- **ML Framework**: Keras, TensorFlow Lite, CNN
 - **Backend**: Python, FastAPI, SQLite
 - **Frontend**: Kotlin (Native Android)
 - **Communication**: UDP Broadcasting, HTTP REST API
