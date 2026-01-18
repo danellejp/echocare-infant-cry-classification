@@ -15,16 +15,25 @@ def print_table(events):
     print(f"{'ID':<5} {'Timestamp':<20} {'Type':<12} {'Det Conf':<10} {'Cls Conf':<10} {'Temp':<8} {'Humidity':<10}")
     print("="*120)
     
-    # Rows
+    # Rows - events are now tuples: (id, timestamp, cry_type, det_conf, class_conf, temp, humidity)
     for event in events:
-        temp_str = f"{event['temperature']:.1f}°C" if event['temperature'] else "N/A"
-        hum_str = f"{event['humidity']:.1f}%" if event['humidity'] else "N/A"
+        event_id = event[0]
+        timestamp = event[1]
+        cry_type = event[2]
+        detection_conf = event[3]
+        classification_conf = event[4]
+        temp = event[5]
+        humidity = event[6]
         
-        print(f"{event['id']:<5} "
-              f"{event['timestamp']:<20} "
-              f"{event['cry_type']:<12} "
-              f"{event['detection_confidence']:<10.2%} "
-              f"{event['classification_confidence']:<10.2%} "
+        # Format temperature and humidity
+        temp_str = f"{temp:.1f}°C" if temp is not None and temp >= 0 else "N/A"
+        hum_str = f"{humidity:.1f}%" if humidity is not None and humidity >= 0 else "N/A"
+        
+        print(f"{event_id:<5} "
+              f"{timestamp:<20} "
+              f"{cry_type:<12} "
+              f"{detection_conf:<10.2%} "
+              f"{classification_conf:<10.2%} "
               f"{temp_str:<8} "
               f"{hum_str:<10}")
     
@@ -51,9 +60,10 @@ if total > 0:
     stats = db.get_statistics(hours=24)
     print("Last 24 Hours Summary:")
     print(f"Total: {stats['total_cries']} cries")
-    print(f"Hungry: {stats['hungry_count']}")
-    print(f"Discomfort: {stats['discomfort_count']}")
-    print(f"Normal: {stats['normal_count']}")
+    by_type = stats.get('by_type', {})
+    print(f"Hungry: {by_type.get('Hungry', 0)}")
+    print(f"Pain: {by_type.get('Pain', 0)}")
+    print(f"Normal: {by_type.get('Normal', 0)}")
 else:
     print("\nNo events in database yet")
     print("Run cry_detection_v4.py to start logging events")
