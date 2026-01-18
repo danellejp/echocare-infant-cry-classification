@@ -87,25 +87,34 @@ class CryDatabase:
     
     def get_recent_events(self, limit=10):
         """
-        Get most recent cry events
+        Get most recent cry events with proper type casting
         
         Args:
             limit: Number of events to retrieve
         
         Returns:
-            list: List of cry event dictionaries
+            list: List of tuples (id, timestamp, cry_type, detection_conf, class_conf, temp, humidity)
         """
         self.cursor.execute('''
-            SELECT * FROM cry_events 
+            SELECT 
+                id,
+                timestamp,
+                cry_type,
+                CAST(detection_confidence AS REAL) as detection_confidence,
+                CAST(classification_confidence AS REAL) as classification_confidence,
+                CAST(temperature AS REAL) as temperature,
+                CAST(humidity AS REAL) as humidity
+            FROM cry_events 
             ORDER BY timestamp DESC 
             LIMIT ?
         ''', (limit,))
         
-        return [dict(row) for row in self.cursor.fetchall()]
+        # Return as list of tuples (not dictionaries) to match API expectations
+        return self.cursor.fetchall()
     
     def get_statistics(self, hours=24):
         """
-        Get cry statistics for the past N hours
+        Get cry statistics for the past N hours with proper type casting
         
         Args:
             hours: Number of hours to look back
@@ -120,21 +129,47 @@ class CryDatabase:
                 SUM(CASE WHEN cry_type = 'Hungry' THEN 1 ELSE 0 END) as hungry_count,
                 SUM(CASE WHEN cry_type = 'Pain' THEN 1 ELSE 0 END) as pain_count,
                 SUM(CASE WHEN cry_type = 'Normal' THEN 1 ELSE 0 END) as normal_count,
-                AVG(temperature) as avg_temperature,
-                AVG(humidity) as avg_humidity
+                AVG(CAST(temperature AS REAL)) as avg_temperature,
+                AVG(CAST(humidity AS REAL)) as avg_humidity,
+                AVG(CAST(classification_confidence AS REAL)) as avg_confidence
             FROM cry_events
             WHERE timestamp >= datetime('now', '-' || ? || ' hours')
         ''', (hours,))
         
         row = self.cursor.fetchone()
         
+        # Calculate average temperature (excluding -1 values)
+        self.cursor.execute('''
+            SELECT AVG(CAST(temperature AS REAL)) as avg_temp
+            FROM cry_events
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+            AND CAST(temperature AS REAL) >= 0
+        ''', (hours,))
+        
+        temp_row = self.cursor.fetchone()
+        avg_temp = round(temp_row['avg_temp'], 1) if temp_row['avg_temp'] else None
+        
+        # Calculate average humidity (excluding -1 values)
+        self.cursor.execute('''
+            SELECT AVG(CAST(humidity AS REAL)) as avg_humidity
+            FROM cry_events
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+            AND CAST(humidity AS REAL) >= 0
+        ''', (hours,))
+        
+        humid_row = self.cursor.fetchone()
+        avg_humidity = round(humid_row['avg_humidity'], 1) if humid_row['avg_humidity'] else None
+        
         return {
             'total_cries': row['total_cries'] or 0,
-            'hungry_count': row['hungry_count'] or 0,
-            'pain_count': row['pain_count'] or 0,
-            'normal_count': row['normal_count'] or 0,
-            'avg_temperature': round(row['avg_temperature'], 1) if row['avg_temperature'] else None,
-            'avg_humidity': round(row['avg_humidity'], 1) if row['avg_humidity'] else None
+            'by_type': {
+                'Hungry': row['hungry_count'] or 0,
+                'Pain': row['pain_count'] or 0,
+                'Normal': row['normal_count'] or 0
+            },
+            'average_confidence': round(row['avg_confidence'], 4) if row['avg_confidence'] else 0,
+            'avg_temperature': avg_temp,
+            'avg_humidity': avg_humidity
         }
     
     def get_cry_pattern(self, hours=24):
@@ -207,26 +242,29 @@ def test_database():
     print("\nTest 2: Retrieving recent events...")
     recent = db.get_recent_events(limit=5)
     for event in recent:
-        print(f"[{event['timestamp']}] {event['cry_type']} "
-              f"(Detection: {event['detection_confidence']:.2%}, "
-              f"Classification: {event['classification_confidence']:.2%})")
+        # event is now a tuple: (id, timestamp, cry_type, det_conf, class_conf, temp, humidity)
+        print(f"[{event[1]}] {event[2]} "
+              f"(Detection: {event[3]:.2%}, "
+              f"Classification: {event[4]:.2%})")
+    print("Recent events retrieved")
     
     # Test 3: Get statistics
     print("\nTest 3: Getting statistics...")
     stats = db.get_statistics(hours=24)
     print(f"Total cries: {stats['total_cries']}")
-    print(f"Hungry: {stats['hungry_count']}")
-    print(f"Pain: {stats['pain_count']}")
-    print(f"Normal: {stats['normal_count']}")
+    print(f"By type: {stats['by_type']}")
+    print(f"Average confidence: {stats['average_confidence']:.2%}")
     if stats['avg_temperature']:
         print(f"Avg temperature: {stats['avg_temperature']}°C")
         print(f"Avg humidity: {stats['avg_humidity']}%")
+    print("Statistics retrieved")
     
     # Test 4: Get total count
     print("\nTest 4: Total events in database...")
     total = db.get_total_events()
     print(f"Total events: {total}")
-    
+    print("Total count retrieved")
+
     # Test 5: Cry pattern
     print("\nTest 5: Hourly cry pattern...")
     pattern = db.get_cry_pattern(hours=24)
@@ -235,8 +273,9 @@ def test_database():
             print(f"Hour {item['hour']}:00 - {item['count']} cries")
     else:
         print("No pattern data (need more events)")
+    print("Pattern retrieved")
     
-    print("All database tests passed")
+    print("All database tests passed!")
 
     # Close connection
     db.close()
