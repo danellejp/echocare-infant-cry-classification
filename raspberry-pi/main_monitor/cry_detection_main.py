@@ -12,6 +12,7 @@ from model_inference import CryDetector
 import time
 from datetime import datetime
 from dht22_reader import get_environment_data
+from udp_broadcaster import UDPBroadcaster
 
 print("EchoCare - Cry Detection System")
 
@@ -21,6 +22,8 @@ db = CryDatabase(database_path)
 led = LEDController()
 audio = AudioProcessor()
 detector = CryDetector()
+broadcaster = UDPBroadcaster(broadcast_port=5005)
+broadcaster.setup()
 print("All components ready")
 
 # Statistics
@@ -97,6 +100,21 @@ try:
                 print("Environment sensor unavailable")
             else:
                 print(f"Temp: {temperature:.1f}°C, Humidity: {humidity:.1f}%")
+            
+            # Broadcast notification
+            broadcast_success = broadcaster.broadcast_with_retry(
+                cry_type=cry_type,
+                detection_confidence=detection_confidence,
+                classification_confidence=classification_confidence,
+                temperature=temperature,
+                humidity=humidity,
+                max_retries=3
+            )
+            
+            if broadcast_success:
+                print("Notification broadcast sent")
+            else:
+                print("Notification broadcast failed")
 
             # Log to database
             event_id = db.insert_cry_event(
@@ -137,4 +155,5 @@ finally:
     led.cleanup()
     audio.terminate()
     db.close()
+    broadcaster.close()
     print("\nCleanup complete\n")
