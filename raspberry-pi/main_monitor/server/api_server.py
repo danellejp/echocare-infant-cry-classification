@@ -226,7 +226,7 @@ if __name__ == "__main__":
     # Run the server
     uvicorn.run(
         app,
-        host="0.0.0.0",  # Listen on all network interfaces
+        host="192.168.4.1",
         port=8000,
         log_level="info"
     )

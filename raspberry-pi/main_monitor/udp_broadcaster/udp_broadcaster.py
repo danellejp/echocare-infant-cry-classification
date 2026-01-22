@@ -11,15 +11,15 @@ from datetime import datetime
 class UDPBroadcaster:
     """Handles UDP broadcast notifications for cry detection"""
     
-    def __init__(self, broadcast_port=5005):
+    def __init__(self, broadcast_port=9999):
         """
         Initialize UDP broadcaster
         
         Args:
-            broadcast_port: Port to broadcast on (default: 5005)
+            broadcast_port: Port to broadcast on (default: 9999)
         """
         self.broadcast_port = broadcast_port
-        self.broadcast_address = '<broadcast>'  # Special address for broadcasting
+        self.broadcast_address = '192.168.4.255'  # EchoCare network broadcast
         self.sock = None
         
         print(f"UDP Broadcaster initialized (Port: {broadcast_port})")
@@ -33,10 +33,13 @@ class UDPBroadcaster:
             # Enable broadcasting
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             
+            # Bind to Pi's IP address (ensures broadcast on correct interface)
+            self.sock.bind(('192.168.4.1', 0))  # Bind to Pi IP
+            
             # Set socket timeout (1 second)
             self.sock.settimeout(1.0)
             
-            print("UDP socket configured for broadcasting")
+            print(f"UDP socket bound to 192.168.4.1, broadcasting to {self.broadcast_address}:{self.broadcast_port}")
             return True
             
         except Exception as e:
@@ -80,7 +83,7 @@ class UDPBroadcaster:
                 (self.broadcast_address, self.broadcast_port)
             )
             
-            print(f"Broadcast sent: {cry_type} (Det: {detection_confidence:.2%}, Class: {classification_confidence:.2%})")
+            print(f"Broadcast sent to {self.broadcast_address}:{self.broadcast_port} - {cry_type} (Det: {detection_confidence:.2%}, Class: {classification_confidence:.2%})")
             return True
             
         except Exception as e:
@@ -150,12 +153,12 @@ class UDPBroadcaster:
 
 def test_broadcaster():
     """Test UDP broadcasting functionality"""
-    print("="*60)
-    print("  UDP Broadcaster Test")
-    print("="*60)
+    print("UDP Broadcaster Test - EchoCare Network")
+    print(f"Pi IP: 192.168.4.1")
+    print(f"Broadcast to: 192.168.4.255:9999")
     
     # Create broadcaster
-    broadcaster = UDPBroadcaster(broadcast_port=5005)
+    broadcaster = UDPBroadcaster(broadcast_port=9999)
     
     # Setup socket
     if not broadcaster.setup():
@@ -187,6 +190,10 @@ def test_broadcaster():
     broadcaster.broadcast_with_retry("Test", 0.95, 0.90, 22.5, 45.0, max_retries=3)
     
     print("\nAll tests complete")
+    print("\nTo receive these on Android:")
+    print("1. Connect phone to EchoCare-Monitor WiFi")
+    print("2. Phone should have IP: 192.168.4.61 (or similar)")
+    print("3. Android app should listen on UDP port 9999")
     
     # Cleanup
     broadcaster.close()
