@@ -99,7 +99,7 @@ class EchoCareSystem:
             
             # UDP Broadcaster
             logger.info("Setting up UDP broadcaster...")
-            self.broadcaster = UDPBroadcaster(broadcast_port=5005)
+            self.broadcaster = UDPBroadcaster(broadcast_port=9999)
             self.broadcaster.setup()
             logger.info("UDP broadcaster ready")
             
