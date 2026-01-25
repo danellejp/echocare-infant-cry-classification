@@ -65,7 +65,6 @@ class UDPBroadcaster:
         try:
             # Create notification payload
             payload = {
-                "event_type": "cry_detected",
                 "timestamp": datetime.now().isoformat(),
                 "cry_type": cry_type,
                 "detection_confidence": round(detection_confidence, 4),
