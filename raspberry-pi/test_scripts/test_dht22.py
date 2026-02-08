@@ -11,7 +11,7 @@ try:
 	print(f"Humidity: {humidity:.1f}%")
 
 except Exception as e:
-	print(f"Unexpected error: {error}")
+	print(f"Unexpected error: {e}")
 
 finally:
 	dht.exit()
