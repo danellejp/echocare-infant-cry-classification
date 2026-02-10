@@ -9,6 +9,7 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 import uvicorn
 import os
+import subprocess
 
 # Import database module
 from database import CryDatabase
@@ -212,6 +213,30 @@ def get_statistics(hours: int = 24, db: CryDatabase = Depends(get_db)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+# ============================================================================
+# Endpoint to get Android phone's time to send to Pi
+# ============================================================================
+
+@app.post("/set-time")
+def set_time(data: dict):
+    """
+    Accept time from the Android app to sync Pi's clock.
+    The Pi has no internet, so it relies on the phone's time.
+    """
+    try:
+        time_string = data.get("datetime")
+        if not time_string:
+            return JSONResponse(status_code=400, content={"error": "datetime field required"})
+        
+        subprocess.run(['sudo', 'date', '-s', time_string], check=True)
+        
+        return {
+            "status": "success",
+            "pi_time": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 # ============================================================================
