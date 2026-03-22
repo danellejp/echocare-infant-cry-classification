@@ -30,7 +30,7 @@ EchoCare is designed to help deaf or hard-of-hearing parents better understand t
 ## 🔗 Related Repositories
 📱 Frontend (Android App): https://github.com/danellejp/EchoCare-Android/
 
-## Setup Instructions
+## 🚀 Setup Instructions
 
 ### Prerequisites
 - Raspberry Pi 4 (with Raspberry Pi OS)
