@@ -40,9 +40,15 @@ class CryDetector:
     def process_cry(self, classification_score):
         """Determine cry type from classification score"""
         if classification_score >= classification_threshold:
-            cry_type = cry_labels[1] if classification_score >= 0.5 else cry_labels[0]
-            confidence = classification_score if classification_score >= 0.5 else (1 - classification_score)
+            # High confidence -> Hungry
+            cry_type = "Hungry"
+            confidence = classification_score
+        elif classification_score <= (1 - classification_threshold):
+            # Low score with high confidence -> Pain
+            cry_type = "Pain"
+            confidence = 1 - classification_score
         else:
+            # Middle range, not confident enough -> Normal
             cry_type = "Normal"
             confidence = classification_score
         
